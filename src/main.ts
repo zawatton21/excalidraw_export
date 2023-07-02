@@ -8,6 +8,12 @@ import * as process from "process";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
 
+import { createCanvas, Image } from 'canvas';
+
+// import Path2D directly from the global scope
+const { Path2D } = require('path2d-polyfill');
+
+
 // Filled in by compile.js.
 const EXCALIDRAW_UTILS_SOURCE = "";
 const CASCADIA_BASE64 = "";
@@ -30,7 +36,19 @@ function excalidrawToSvg(diagram: string): Promise<string> {
     </body>
   `;
 
-  const dom = new JSDOM(exportScript, { runScripts: "dangerously" });
+  const dom = new JSDOM(exportScript, { 
+    runScripts: "dangerously", 
+    resources: "usable",
+    pretendToBeVisual: true,
+    beforeParse(window) {
+      window.HTMLCanvasElement.prototype.getContext = function () {
+        if (!this._canvas) this._canvas = createCanvas(this.width, this.height);
+        return this._canvas.getContext('2d');
+      };
+      window.Path2D = Path2D; // use Path2D from path2d-polyfill
+      window.Image = Image;
+    }
+  });
 
   return dom.window.renderSvg();
 }
